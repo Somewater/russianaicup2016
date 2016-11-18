@@ -1,0 +1,3 @@
+[submodule "local-runner"]
+	path = local-runner
+	url = ./local-runner
