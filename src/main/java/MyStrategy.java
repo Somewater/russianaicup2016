@@ -1,19 +1,25 @@
 import model.*;
 
-import java.awt.*;
 import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.Random;
 
 public final class MyStrategy implements Strategy {
     MyStrategyFromDocs strategyFromDocs = new MyStrategyFromDocs();
+    Controller controller = new Controller();
+
+    Pathfinder2 pf2;
+    Pathfinder pf;
+    NaivePathfinder npf;
+    private int pfSwapTickCooldown = 0;
+    private final int PF_SWAP_COOLDOWN = 200;
 
     @Override
     public void move(Wizard self, World world, Game game, Move move) {
         initNewTick(self, world, game, move);
 
         //strategyFromDocs.move(self, world, game, move);
-
-        trackTarget();
+        //trackTarget();
+        controller.move();
 
         completeTick();
     }
@@ -25,8 +31,20 @@ public final class MyStrategy implements Strategy {
         C.world = world;
         C.game = game;
         C.move = move;
+        if (C.random == null)
+            C.random = new Random(game.getRandomSeed());
         if (C.pathfinder == null)
-            C.pathfinder = new Pathfinder2();
+            C.pathfinder = pf2 = new Pathfinder2();
+
+        if (C.pathfinderFailureTicks >= PF_SWAP_COOLDOWN) {
+            if (pfSwapTickCooldown-- <= 0) {
+                pfSwapTickCooldown = PF_SWAP_COOLDOWN;
+                swapPathFinder();
+            }
+        } else {
+            pfSwapTickCooldown = 0;
+        }
+
         if (C.vis == null)
             C.vis = new VisualClient(!C.debug);
 
@@ -38,13 +56,27 @@ public final class MyStrategy implements Strategy {
         C.targets = new NearestTargets().init();
     }
 
+    private void swapPathFinder() {
+        if (C.pathfinder instanceof Pathfinder2) {
+            if (pf == null) pf = new Pathfinder();
+            C.pathfinder = pf;
+        } else if (C.pathfinder instanceof Pathfinder) {
+            if(npf == null) npf = new NaivePathfinder();
+            C.pathfinder = npf;
+        } else {
+            C.pathfinder = pf2;
+        }
+    }
+
     private void completeTick() {
         if (C.debug) {
-            C.pathfinder.debugDrawMap();
+            if (C.pathfinder instanceof Pathfinder2) ((Pathfinder2) C.pathfinder).debugDrawMap();
             C.vis.endPost();
         }
         long duration = System.currentTimeMillis() - C.startTickTime;
-        System.out.print("Tick duration: "); System.out.print(duration); System.out.print(" ms\n");
+        if (C.debug) {
+            System.out.print("Tick duration: "); System.out.print(duration); System.out.print(" ms\n");
+        }
         C.tickDurationSum += duration;
         C.targets = null;
     }
@@ -69,25 +101,13 @@ public final class MyStrategy implements Strategy {
                     ws.add(w);
                 }
         }
-        ws.sort(new Comparator<Wizard>() {
-            @Override
-            public int compare(Wizard o1, Wizard o2) {
-                double diff = P.from(o1).distance(P.from(C.self)) - P.from(o2).distance(P.from(C.self));
-                return (int)diff;
-            }
-        });
-        target = ws.get(ws.size() - 1);
+        ws.sort(Utils.distanceCmp);
+        if (!ws.isEmpty())
+            target = ws.get(ws.size() - 1);
 
         if (target != null) {
             P[] path = C.pathfinder.path(P.from(C.self), P.from(target));
-            P prev = null;
-
-            for (P p : path) {
-                if (prev != null) {
-                    C.vis.line(prev.x, prev.y, p.x, p.y, Color.RED);
-                }
-                prev = p;
-            }
+            Utils.drawPath(path);
             C.pathfinder.goTo(path);
         }
     }

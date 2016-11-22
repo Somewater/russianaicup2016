@@ -6,7 +6,8 @@ import java.util.Comparator;
 
 public class Utils {
     public static void goTo(P target, boolean canRotate) {
-        C.vis.fillCircle(target.x, target.y, 5, Color.RED);
+        if (C.debug)
+            C.vis.fillCircle(target.x, target.y, 5, Color.RED);
         Wizard self = C.self;
         World world = C.world;
         Game game = C.game;
@@ -42,42 +43,12 @@ public class Utils {
 
             double setSpeed = speedVec.size() * m * sign(movement.dot(speedVecOrig));
             double setStrafeSpeed = speedStrafeVec.size() * m * sign(movement.dot(speedStrafeVecOrig));
+            if (C.pathfinderFailureTicks > 3 && C.pathfinderFailureTicks % 2 == 0 && (C.pathfinder instanceof Pathfinder2)) {
+                setSpeed = setSpeed * 0.5;
+                setStrafeSpeed = setStrafeSpeed * 0.5;
+            }
             move.setSpeed(setSpeed);
             move.setStrafeSpeed(setStrafeSpeed);
-
-//            Double Tan = Math.tan(angle);
-//            if (angle == Math.PI / 2) {
-//                move.setStrafeSpeed(maxSpeed);
-//                move.setSpeed(0);
-//            }
-//            if (angle == -1* Math.PI / 2) {
-//                move.setStrafeSpeed(-1*maxSpeed);
-//                move.setSpeed(0);
-//
-//            }
-//
-//            double speedR = Math.abs(game.getWizardStrafeSpeed());
-//            double speedB = -1*Math.abs(game.getWizardBackwardSpeed());
-//            int sign = 1;
-//            if (angle < 0){
-//                sign = -1;
-//                angle = sign * angle;
-//            }
-//            if((angle>Math.atan(speedR/game.getWizardForwardSpeed()))&&(angle<3*Math.PI/4)){
-//                move.setStrafeSpeed(sign*speedR);
-//                //if(angle > Math.PI/2)
-//                move.setSpeed(Tan/speedR);
-//            }
-//            else{
-//                double speed = speedB;
-//                if(angle < Math.PI/2){
-//                    speed = game.getWizardForwardSpeed();
-//                }
-//                move.setStrafeSpeed(sign*Math.abs(Tan*speed));
-//                move.setSpeed(speed);
-//
-//            }
-
         }
 
     }
@@ -87,6 +58,13 @@ public class Utils {
         if (diff < 0)
             diff = -diff;
         return diff < 0.0000001;
+    }
+
+    static public boolean equal(double a, double b, double precision) {
+        double diff = a - b;
+        if (diff < 0)
+            diff = -diff;
+        return diff < precision;
     }
 
     public static double sign(double v) {
@@ -100,7 +78,7 @@ public class Utils {
     }
 
     public static double padding() {
-        return C.self.getRadius() /*+ C.maxSpeed + 1*/;
+        return C.self.getRadius() + C.maxSpeed + 1;
     }
 
     public static double distanceSqr(Unit u) {
@@ -131,4 +109,17 @@ public class Utils {
                 return 0;
         }
     };
+
+    public static void drawPath(P[] path) {
+        if (C.debug) {
+            P prev = null;
+
+            for (P p : path) {
+                if (prev != null) {
+                    C.vis.line(prev.x, prev.y, p.x, p.y, Color.RED);
+                }
+                prev = p;
+            }
+        }
+    }
 }

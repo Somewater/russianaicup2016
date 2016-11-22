@@ -1,33 +1,72 @@
 import com.sun.istack.internal.Nullable;
-import model.Building;
-import model.CircularUnit;
-import model.Tree;
-import model.Unit;
+import model.*;
 
 import java.awt.*;
+import java.util.*;
 import java.util.List;
 
-public class Pathfinder2 extends Pathfinder {
+public class Pathfinder2 implements IPathfinder {
 
-    private final int CELL_SIZE = 10;
+    private static final int DEFAULT_SET_SIZE = 50;
+
+    public static int CELL_SIZE = DEFAULT_SET_SIZE;
     private Data data;
+    private P self;
+    private LinkedList<PathCache> cache = new LinkedList<>();
 
     public void initNewTick() {
         data = null;
+        P newSelf = P.from(C.self);
+        if (self != null && self.equals(newSelf))
+            C.pathfinderFailureTicks++;
+        else
+            C.pathfinderFailureTicks = 0;
+        self = newSelf;
+        if (C.pathfinderFailureTicks > 10) {
+            if (CELL_SIZE > 5) {
+                CELL_SIZE -= 5;
+            } else {
+                CELL_SIZE = DEFAULT_SET_SIZE;
+            }
+        } else
+            CELL_SIZE = DEFAULT_SET_SIZE;
+
+        if (cache.size() > 100) {
+            cache.removeFirst();
+        }
+        Iterator<PathCache> iter = cache.iterator();
+        while (iter.hasNext()) {
+            PathCache c = iter.next();
+            if (C.world.getTickIndex() - c.tick > 10)
+                iter.remove();
+        }
     }
 
     @Nullable
     @Override
     public P[] path(P src, P dest) {
+        return  path(src, dest, -1);
+    }
+
+    @Nullable
+    public P[] path(P src, P dest, double radius) {
+        P[] path = tryFindCachedPath(src, dest, radius);
+        if (path != null)
+            return path;
+
         if (data == null)
             data = createData();
         List<Node> pathNodes =  data.nodeMap.findPath(
                 (int)(src.x / CELL_SIZE),
                 (int)(src.y / CELL_SIZE),
                 (int)(dest.x / CELL_SIZE),
-                (int)(dest.y / CELL_SIZE));
+                (int)(dest.y / CELL_SIZE),
+                radius / CELL_SIZE);
 
-        P[] path = new P[pathNodes.size()];
+        if (pathNodes == null)
+            return null;
+
+        path = new P[pathNodes.size()];
         int i = 0;
         for(Node n : pathNodes) {
             double x = n.getxPosition() * CELL_SIZE;
@@ -35,21 +74,83 @@ public class Pathfinder2 extends Pathfinder {
             P p = new P(x, y);
             path[i++] = p;
         }
+
+        if (path.length > 20)
+            cachePath(src, dest, radius, path);
+        C.pathFromCache = 0;
         return path;
     }
 
 
-    public void goTo(Unit target) {
-        goTo(P.from(target));
+    public boolean goTo(Unit target) {
+        double radius = -1;
+        if (target instanceof CircularUnit) {
+            radius = ((CircularUnit) target).getRadius();
+            radius += Utils.padding();
+            radius += C.game.getStaffRange() / 2;
+        }
+        return goTo(path(self, P.from(target), radius));
     }
 
-    public void goTo(P target) {
-        goTo(path(P.from(C.self), target));
+    public boolean goTo(P target) {
+        return goTo(target, -1);
     }
 
-    public void goTo(P[] path) {
-        P p = path[1];
+    public boolean goTo(P target, double radius) {
+        P[] path = path(self, target);
+        if (path == null)
+            path = path(self, target, radius);
+        return goTo(path);
+    }
+
+    public boolean goTo(P[] path) {
+        if (path == null)
+            return false;
+        Utils.drawPath(path);
+        P p;
+        if (P.onLine(path[0], path[1], self) || P.perpendicularOnLine(path[0], path[1], self)) {
+            p = path[1];
+        } else {
+            p = path[0];
+        }
         Utils.goTo(p, false);
+        return true;
+    }
+
+    private void cachePath(P src, P dest, double radius, P[] path) {
+        PathCache c = new PathCache(src, dest, radius, path, C.world.getTickIndex());
+        cache.add(c);
+    }
+
+    private P[] tryFindCachedPath(P src, P dest, double radius) {
+        Iterator<PathCache> iter = cache.descendingIterator();
+        while (iter.hasNext()) {
+            PathCache c = iter.next();
+            if (c.radius == radius && c.dest.equals(dest)) {
+                double srcDistance2 = c.src.distanceSqr(src);
+                if (srcDistance2 < 100 * 100) {
+                    int shortLen = c.path.length;
+                    if (shortLen > 10) shortLen = 10;
+                    for (int i = 1; i < shortLen; i++) {
+                        P p1 = c.path[i - 1];
+                        P p2 = c.path[i];
+                        boolean ok = false;
+                        if (P.onLine(p1, p2, src))
+                            ok = true;
+                        if (!ok) {
+                            ok = P.perpendicularOnLine(p1, p2, src);
+                        }
+                        if (ok) {
+                            C.pathFromCache++;
+                            P[] path = new P[c.path.length + 1 - i];
+                            System.arraycopy(c.path, i - 1, path, 0, path.length);
+                            return path;
+                        }
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     private Data createData() {
@@ -61,6 +162,12 @@ public class Pathfinder2 extends Pathfinder {
             closeNodes(d.nodeMap, t);
         for (Building b : C.world.getBuildings())
             closeNodes(d.nodeMap, b);
+        for (Wizard w : C.world.getWizards())
+            if (!w.isMe() && Utils.distanceSqr(w) < 500*500)
+                closeNodes(d.nodeMap, w);
+        for (Minion m : C.world.getMinions())
+            if (Utils.distanceSqr(m) < 500*500)
+                closeNodes(d.nodeMap, m);
         return d;
     }
 
@@ -98,6 +205,8 @@ public class Pathfinder2 extends Pathfinder {
         double y = u.getY() / CELL_SIZE;
         double r = (u.getRadius() + Utils.padding()) / CELL_SIZE;
         double r2 = r * r;
+        double selfX = self.x / CELL_SIZE;
+        double selfY = self.y / CELL_SIZE;
 
         int width = (int)(C.game.getMapSize() / CELL_SIZE);
         double xMax = x + r;
@@ -110,7 +219,9 @@ public class Pathfinder2 extends Pathfinder {
                 double dy = yc - y;
                 double dist = Math.sqrt(dx * dx + dy * dy);
                 if (dist - r <= 1.0) {
-                    nodeMap.setWalkable(xc, yc, false);
+                    if (Math.abs(xc - selfX) > 1.0 || Math.abs(yc - selfY) > 1.0) {
+                        nodeMap.setWalkable(xc, yc, false);
+                    }
                 }
                 //nodeMap.setWalkable(xc, yc, false);
             }
@@ -130,6 +241,23 @@ public class Pathfinder2 extends Pathfinder {
                     C.vis.rect(nx, ny, nxMax, nyMax, Color.cyan);
                 }
             }
+        }
+    }
+
+    private static class PathCache {
+
+        public final P src;
+        public final P dest;
+        public final double radius;
+        public final P[] path;
+        public final int tick;
+
+        public PathCache(P src, P dest, double radius, P[] path, int tick) {
+            this.src = src;
+            this.dest = dest;
+            this.radius = radius;
+            this.path = path;
+            this.tick = tick;
         }
     }
 }

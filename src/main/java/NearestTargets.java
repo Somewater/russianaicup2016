@@ -57,7 +57,8 @@ public class NearestTargets {
             int maxTicksCur = maxTicks;
             if (b.getType() == BonusType.SHIELD)
                 maxTicksCur = (int)(maxTicksCur + (1.0 - C.health()) * 300);
-            if (C.pathfinder.distance(b) < maxTicksCur * C.maxSpeed)
+            double dist = maxTicksCur * C.maxSpeed;
+            if (Utils.distanceSqr(b) < dist * dist)
                 bonuses.add(b);
         }
         bonuses.sort(Utils.distanceCmp);

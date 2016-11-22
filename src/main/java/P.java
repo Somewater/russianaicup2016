@@ -230,4 +230,28 @@ public class P {
         double projLenOfLine = cos * lenLineE2;
         return new P(v1.x + (projLenOfLine * e1.x) / lenLineE1, v1.y + (projLenOfLine * e1.y) / lenLineE1);
     }
+
+    public static boolean onLine(P l1, P l2, P p) {
+        final double precision = 3.0;
+        if (!Utils.equal(l1.x, l2.x)) {
+            if (l1.x > l2.x) {
+                P buf = l1;
+                l1 = l2;
+                l2 = buf;
+            }
+
+            double m = (l2.y - l1.y) / (l2.x - l1.x);
+            double b = l1.y - m * l1.x;
+
+            double py = p.x * m + b;
+            return Utils.equal(p.y, py, precision) && l1.x < p.x && p.x < l2.x;
+        } else {
+            return Utils.equal(l1.distance(p) + p.distance(l2), l1.distance(l2), precision);
+        }
+    }
+
+    public static boolean perpendicularOnLine(P l1, P l2, P p) {
+        P perpend = P.perpendicular(l1, l2, p);
+        return P.onLine(l1, l2, perpend);
+    }
 }

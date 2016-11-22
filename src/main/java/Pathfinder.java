@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 
-public class Pathfinder {
+public class Pathfinder implements IPathfinder {
 
     private Data data;
     private P self;
@@ -117,15 +117,20 @@ public class Pathfinder {
         });
     }
 
-    public void goTo(Unit target) {
-        goTo(P.from(target));
+    public boolean goTo(Unit target) {
+        return goTo(P.from(target));
     }
 
-    public void goTo(P target) {
-        goTo(path(P.from(C.self), target));
+    public boolean goTo(P target, double radius) {
+        // ignore radius
+        return goTo(path(P.from(C.self), target));
     }
 
-    public void goTo(P[] path) {
+    public boolean goTo(P target) {
+        return goTo(path(P.from(C.self), target));
+    }
+
+    public boolean goTo(P[] path) {
         P p = path[1];
         if (path.length > 2) {
             P p2 = path[2];
@@ -133,6 +138,7 @@ public class Pathfinder {
                 p = p2;
         }
         Utils.goTo(p, false);
+        return true;
     }
 
     private Data createData() {

@@ -25,6 +25,7 @@
 
 
 
+import java.awt.*;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -193,22 +194,51 @@ public class NodeMap<T extends AbstractNode> {
      * @param newY
      * @return
      */
-    public final List<T> findPath(int oldX, int oldY, int newX, int newY) {
+    public final List<T> findPath(int oldX, int oldY, int newX, int newY, double distance) {
+        if (distance <= 0 && !nodes[newX][newY].isWalkable())
+            return null;
+
         // TODO check input
         openList = new LinkedList<T>();
         closedList = new LinkedList<T>();
         openList.add(nodes[oldX][oldY]); // add starting node to open list
+        double distance2 = distance > 0 ? distance * distance : -1;
 
         done = false;
         T current;
-        while (!done) {
+        int counter = 0;
+        if (C.debug) {
+            C.vis.line(
+                    oldX * Pathfinder2.CELL_SIZE,
+                    oldY * Pathfinder2.CELL_SIZE,
+                    newX * Pathfinder2.CELL_SIZE,
+                    newY * Pathfinder2.CELL_SIZE,
+                    Color.gray);
+            C.vis.circle(newX * Pathfinder2.CELL_SIZE, newY * Pathfinder2.CELL_SIZE, 3, Color.gray);
+        }
+
+        while (!done && (counter++) < 1000 && (C.debug || C.tickDurationMs() < 1000)) {
             current = lowestFInOpen(); // get node with lowest fCosts from openList
             closedList.add(current); // add current node to closed list
             openList.remove(current); // delete current node from open list
 
+            if (C.debug) {
+                C.vis.circle(current.xPosition * Pathfinder2.CELL_SIZE,
+                        current.yPosition * Pathfinder2.CELL_SIZE,
+                        1, Color.gray);
+            }
+
             if ((current.getxPosition() == newX)
                     && (current.getyPosition() == newY)) { // found goal
                 return calcPath(nodes[oldX][oldY], current);
+            }
+
+            if (distance2 > 0) {
+                double dx = current.getxPosition() - newX;
+                double dy = current.getyPosition() - newY;
+                double dist2 = dx * dx + dy * dy;
+                if (dist2 <= distance2)
+                    return calcPath(nodes[oldX][oldY], current);
             }
 
             // for all adjacent nodes:
@@ -229,10 +259,15 @@ public class NodeMap<T extends AbstractNode> {
             }
 
             if (openList.isEmpty()) { // no path exists
-                return new LinkedList<T>(); // return empty list
+                return null;
+                //return new LinkedList<T>(); // return empty list
             }
         }
         return null; // unreachable
+    }
+
+    public final List<T> findPath(int oldX, int oldY, int newX, int newY) {
+        return findPath(oldX, oldY, newX, newY, -1);
     }
 
     /**
@@ -254,10 +289,12 @@ public class NodeMap<T extends AbstractNode> {
             path.addFirst(curr);
             curr = (T) curr.getPrevious();
 
-            if (curr.equals(start)) {
+            if (curr == null || curr.equals(start)) {
                 done = true;
             }
         }
+        if (path.size() == 1)
+            path.addFirst(start);
         return path;
     }
 
