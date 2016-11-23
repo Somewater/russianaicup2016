@@ -25,7 +25,6 @@ public final class MyStrategy implements Strategy {
     }
 
     private void initNewTick(Wizard self, World world, Game game, Move move) {
-        C.debug = System.getenv("DEBUG") != null && System.getenv("DEBUG").startsWith("t");
         C.startTickTime = System.currentTimeMillis();
         C.self = self;
         C.world = world;

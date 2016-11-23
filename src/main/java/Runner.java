@@ -43,6 +43,7 @@ public final class Runner {
 
                     Move move = new Move();
                     moves[wizardIndex] = move;
+                    C.debug = System.getenv("DEBUG") != null && System.getenv("DEBUG").startsWith("t");
                     strategies[wizardIndex /*playerWizard.getTeammateIndex()*/].move(
                             playerWizard, playerContext.getWorld(), game, move
                     );
