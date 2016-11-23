@@ -1,5 +1,3 @@
-import com.sun.corba.se.impl.javax.rmi.CORBA.Util;
-import com.sun.istack.internal.Nullable;
 import model.Building;
 import model.CircularUnit;
 import model.Tree;
@@ -42,7 +40,6 @@ public class Pathfinder implements IPathfinder {
         }
     }
 
-    @Nullable
     public P[] path(P src, P dest) {
         if (data == null)
             data = createData();
@@ -195,7 +192,7 @@ public class Pathfinder implements IPathfinder {
             unit = null;
         }
 
-        public Wall(double x, double y, double r, @Nullable Unit unit) {
+        public Wall(double x, double y, double r, Unit unit) {
             super(x, y);
             this.r = r;
             this.unit = unit;

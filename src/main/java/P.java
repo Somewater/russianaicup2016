@@ -1,4 +1,3 @@
-import com.sun.istack.internal.Nullable;
 import model.Unit;
 
 /**
@@ -112,7 +111,6 @@ public class P {
             return super.equals(obj);
     }
 
-    @Nullable
     public static P[] intersectionLineCircle(P l1, P l2, P center, double r) {
 //        double m = (l2.y - l1.y) / (l2.x - l1.x);
 //        double b = l1.y - c.y - m * (l1.x - c.x);
@@ -175,7 +173,6 @@ public class P {
     }
 
 
-    @Nullable
     public static P[] intersectionCircles(P c1, double r1, P c2, double r2) {
         double dx = c1.x - c2.x;
         double dy = c1.y - c2.y;

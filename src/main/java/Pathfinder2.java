@@ -1,4 +1,3 @@
-import com.sun.istack.internal.Nullable;
 import model.*;
 
 import java.awt.*;
@@ -42,13 +41,11 @@ public class Pathfinder2 implements IPathfinder {
         }
     }
 
-    @Nullable
     @Override
     public P[] path(P src, P dest) {
         return  path(src, dest, -1);
     }
 
-    @Nullable
     public P[] path(P src, P dest, double radius) {
         P[] path = tryFindCachedPath(src, dest, radius);
         if (path != null)
