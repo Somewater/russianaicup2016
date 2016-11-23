@@ -45,7 +45,7 @@ public final class MyStrategy implements Strategy {
             pfSwapTickCooldown = 0;
         }
 
-        if (C.vis == null)
+        if (C.vis == null && C.debug)
             C.vis = new VisualClient(!C.debug);
 
         C.pathfinder.initNewTick();
@@ -75,7 +75,11 @@ public final class MyStrategy implements Strategy {
         }
         long duration = System.currentTimeMillis() - C.startTickTime;
         if (C.debug) {
-            System.out.print("Tick duration: "); System.out.print(duration); System.out.print(" ms\n");
+            System.out.print("[TICK\t" + String.valueOf(C.world.getTickIndex()) + ",\t");
+            System.out.print(duration);
+            System.out.print(" ms]\t");
+            Utils.printDebugMoveTarget();
+            System.out.print("\n");
         }
         C.tickDurationSum += duration;
         C.targets = null;

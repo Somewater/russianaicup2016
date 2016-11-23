@@ -228,6 +228,8 @@ public class Pathfinder2 implements IPathfinder {
     }
 
     public void debugDrawMap() {
+        if (!C.debug)
+            return;
         if (data == null)
             return;
         for (int x = 0; x < data.nodeMap.width; x++) {

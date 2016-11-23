@@ -1,7 +1,4 @@
-import model.Game;
-import model.Move;
-import model.Wizard;
-import model.World;
+import model.*;
 
 import java.util.Random;
 
@@ -37,4 +34,6 @@ public class C {
 
     public static int pathfinderFailureTicks = 0;
     public static int pathFromCache = 0;
+
+    public static Triple<String, Unit, P> moveTarget = null;
 }

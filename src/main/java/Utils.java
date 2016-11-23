@@ -1,3 +1,4 @@
+import com.sun.istack.internal.Nullable;
 import model.*;
 
 import java.awt.*;
@@ -34,7 +35,7 @@ public class Utils {
             double cos = Math.cos(self.getAngle());
             P movement = new P(target.x - self.getX(), target.y - self.getY());
             P speedVecOrig = new P(speed * cos, speed * sin);
-            P speedStrafeVecOrig = new P(-speedStrafe * sin, -speedStrafe * cos);
+            P speedStrafeVecOrig = new P(-speedStrafe * sin, speedStrafe * cos);
             P speedVec = movement.projectOn(speedVecOrig);
             P speedStrafeVec = movement.projectOn(speedStrafeVecOrig);
             double m = Math.min(speed + game.getWizardStrafeSpeed(), speedVec.size() + speedStrafeVec.size())
@@ -119,6 +120,30 @@ public class Utils {
                     C.vis.line(prev.x, prev.y, p.x, p.y, Color.RED);
                 }
                 prev = p;
+            }
+        }
+    }
+
+
+    public static void debugMoveTarget(String label, @Nullable Unit target, @Nullable P targetPoint) {
+        C.moveTarget = new Triple<>(label, target, targetPoint);
+    }
+
+    public static void printDebugMoveTarget() {
+        if (C.moveTarget == null) {
+            System.out.print("<no target>");
+        } else {
+            String label = C.moveTarget.a;
+            Unit target = C.moveTarget.b;
+            P targetPoint = C.moveTarget.c;
+            if (target == null) {
+                System.out.print("<" + label + ">");
+            } else {
+                String targetString = target.getClass().getSimpleName() + "(" + target.getX() + ", " + target.getY() + ")";
+                System.out.print("<" + label + "> to " + targetString);
+            }
+            if (targetPoint != null) {
+                System.out.print(" => (" + String.valueOf(targetPoint.x) + ", " + String.valueOf(targetPoint.y) + ")");
             }
         }
     }
