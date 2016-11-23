@@ -124,7 +124,7 @@ public class Utils {
     }
 
 
-    public static void debugMoveTarget(String label, @Nullable Unit target, @Nullable P targetPoint) {
+    public static void debugMoveTarget(String label, Unit target, P targetPoint) {
         C.moveTarget = new Triple<>(label, target, targetPoint);
     }
 
