@@ -222,6 +222,9 @@ public class Pathfinder2 implements IPathfinder {
         double yMax = y + r;
         for (int xc_0 = (int)(x - r); xc_0 <= xMax; xc_0++)
             for (int yc_0 = (int)(y - r); yc_0 <= yMax; yc_0++) {
+                if (xc_0 >= width || yc_0 >= width || xc_0 < 0 || yc_0 < 0)
+                    continue;
+
                 // check 4 corners
                 boolean walkable = true;
                 cycle:
@@ -229,8 +232,6 @@ public class Pathfinder2 implements IPathfinder {
                     for (int yc_d = 0; yc_d < 2; yc_d++) {
                         double xc = xc_0 + xc_d;
                         double yc = yc_0 + yc_d;
-                        if (xc >= width || yc >= width || xc < 0 || yc < 0)
-                            continue;
                         double dx = xc - x;
                         double dy = yc - y;
                         double dist = Math.sqrt(dx * dx + dy * dy);
@@ -244,7 +245,7 @@ public class Pathfinder2 implements IPathfinder {
                 }
 
                 if (!walkable)
-                    nodeMap.setWalkable((int)xc_0, (int)yc_0, false);
+                    nodeMap.setWalkable(xc_0, yc_0, false);
             }
     }
 
