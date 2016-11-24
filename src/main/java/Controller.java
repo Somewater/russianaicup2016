@@ -350,7 +350,7 @@ public class Controller {
         return result;
     }
 
-    private final double WAYPOINT_RADIUS = 100.0D;
+    private final double WAYPOINT_RADIUS = 300.0D;
 
     private static class WayPoint extends P {
         public final int towerIndex;
