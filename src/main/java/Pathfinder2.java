@@ -220,19 +220,31 @@ public class Pathfinder2 implements IPathfinder {
         int width = (int)(C.game.getMapSize() / CELL_SIZE);
         double xMax = x + r;
         double yMax = y + r;
-        for (int xc = (int)(x - r); xc <= xMax; xc++)
-            for (int yc = (int)(y - r); yc <= yMax; yc++) {
-                if (xc >= width || yc >= width || xc < 0 || yc < 0)
-                    continue;
-                double dx = xc - x;
-                double dy = yc - y;
-                double dist = Math.sqrt(dx * dx + dy * dy);
-                if (dist - r <= 1.0) {
-                    if (Math.abs(xc - selfX) > 1.0 || Math.abs(yc - selfY) > 1.0) {
-                        nodeMap.setWalkable(xc, yc, false);
+        for (int xc_0 = (int)(x - r); xc_0 <= xMax; xc_0++)
+            for (int yc_0 = (int)(y - r); yc_0 <= yMax; yc_0++) {
+                // check 4 corners
+                boolean walkable = true;
+                cycle:
+                for (int xc_d = 0; xc_d < 2; xc_d++) {
+                    for (int yc_d = 0; yc_d < 2; yc_d++) {
+                        double xc = xc_0 + xc_d;
+                        double yc = yc_0 + yc_d;
+                        if (xc >= width || yc >= width || xc < 0 || yc < 0)
+                            continue;
+                        double dx = xc - x;
+                        double dy = yc - y;
+                        double dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist - r <= 0.0) {
+                            if (Math.abs(xc - selfX) > 1.0 || Math.abs(yc - selfY) > 1.0) {
+                                walkable = false;
+                                break cycle;
+                            }
+                        }
                     }
                 }
-                //nodeMap.setWalkable(xc, yc, false);
+
+                if (!walkable)
+                    nodeMap.setWalkable((int)xc_0, (int)yc_0, false);
             }
     }
 
