@@ -2,7 +2,7 @@ import model.*;
 
 import java.util.*;
 
-public final class MyStrategyFromDocs implements Strategy {
+public final class MyStrategyFromDocsModified implements Strategy {
     private static final double WAYPOINT_RADIUS = 100.0D;
 
     private static final double LOW_HP_FACTOR = 0.25D;
