@@ -6,7 +6,9 @@ import java.util.List;
 
 public class Pathfinder2 implements IPathfinder {
 
-    private static final int DEFAULT_SET_SIZE = 50;
+    private static final int DEFAULT_SET_SIZE = 25;
+    private static final int MIN_SET_SIZE = 20;
+    private static final int SET_SIZE_DEC = 5;
 
     public static int CELL_SIZE = DEFAULT_SET_SIZE;
     private Data data;
@@ -22,8 +24,8 @@ public class Pathfinder2 implements IPathfinder {
             C.pathfinderFailureTicks = 0;
         self = newSelf;
         if (C.pathfinderFailureTicks > 10) {
-            if (CELL_SIZE > 5) {
-                CELL_SIZE -= 5;
+            if (CELL_SIZE > MIN_SET_SIZE) {
+                CELL_SIZE -= SET_SIZE_DEC;
             } else {
                 CELL_SIZE = DEFAULT_SET_SIZE;
             }
@@ -77,7 +79,7 @@ public class Pathfinder2 implements IPathfinder {
             path[i++] = p;
         }
 
-        if (path.length > 20)
+        if (path.length > 5)
             cachePath(src, dest, radius, path);
         C.pathFromCache = 0;
         return path;
@@ -235,7 +237,7 @@ public class Pathfinder2 implements IPathfinder {
                         double dx = xc - x;
                         double dy = yc - y;
                         double dist = Math.sqrt(dx * dx + dy * dy);
-                        if (dist - r <= 0.0) {
+                        if (dist - r < 1.0) {
                             if (Math.abs(xc - selfX) > 1.0 || Math.abs(yc - selfY) > 1.0) {
                                 walkable = false;
                                 break cycle;
