@@ -4,8 +4,8 @@ import java.util.ArrayList;
 import java.util.Random;
 
 public final class MyStrategy implements Strategy {
-    MyStrategyFromDocs strategyFromDocs = new MyStrategyFromDocs();
     Controller controller = new Controller();
+    MyStrategyFromDocsModified strategyFromDocs = new MyStrategyFromDocsModified(controller);
 
     Pathfinder2 pf2;
     Pathfinder pf;
@@ -18,7 +18,7 @@ public final class MyStrategy implements Strategy {
         initNewTick(self, world, game, move);
 
         //trackTarget();
-        if (!controller.move())
+        //if (!controller.move())
             strategyFromDocs.move(self, world, game, move);
 
         completeTick();

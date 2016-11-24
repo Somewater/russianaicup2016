@@ -7,10 +7,10 @@ import java.util.Optional;
 
 public class Controller {
     private final int NEAREST_RADIUS = 180;
-    private LaneType lane = null;
-    private Map<LaneType, WayPoint[]> waypointsByLane = null;
-    private WayPoint[] waypoints;
-    private WayPoint[] waypointsReversed;
+    public LaneType lane = null;
+    public Map<LaneType, WayPoint[]> waypointsByLane = null;
+    public WayPoint[] waypoints;
+    public WayPoint[] waypointsReversed;
     private int nextPointBranchCooldown = 0;
                                             // top, middle, bottom
     private final P[] firstLineTowers = new P[]{new P(1688, 50), new P(2071, 1600), new P(3650, 2344)};
@@ -187,7 +187,7 @@ public class Controller {
         return new Pair<>(visible, destroyed);
     }
 
-    private void selectLane() {
+    public void selectLane() {
         Message[] messages = C.self.getMessages();
         if (messages.length > 0) {
             if (messages[0].getLane() != null) {
@@ -214,7 +214,7 @@ public class Controller {
         }
     }
     
-    private void createWaypoints() {
+    public void createWaypoints() {
         double mapSize = C.game.getMapSize();
         waypointsByLane =  new EnumMap<>(LaneType.class);
         waypointsByLane.put(LaneType.MIDDLE, new WayPoint[]{
@@ -257,7 +257,7 @@ public class Controller {
         });
     }
 
-    private P getNextWaypoint() {
+    public P getNextWaypoint() {
         Pair<Integer, Integer> towersState = nearestLaneTowerIndex();
         int towerIndex = 0;
         if (towersState.a != 0 || towersState.b == 1)
@@ -279,7 +279,7 @@ public class Controller {
         return getNextWaypoint(waypoints, maxIndex);
     }
 
-    private P getPreviousWaypoint() {
+    public P getPreviousWaypoint() {
         return getNextWaypoint(waypointsReversed);
     }
 
