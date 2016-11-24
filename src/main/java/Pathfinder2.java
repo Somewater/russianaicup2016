@@ -47,7 +47,12 @@ public class Pathfinder2 implements IPathfinder {
     }
 
     public P[] path(P src, P dest, double radius) {
-        P[] path = tryFindCachedPath(src, dest, radius);
+        P[] path;
+        path = tryFindShortPath(src, dest, radius);
+        if (path != null)
+            return path;
+
+        path = tryFindCachedPath(src, dest, radius);
         if (path != null)
             return path;
 
@@ -117,6 +122,13 @@ public class Pathfinder2 implements IPathfinder {
     private void cachePath(P src, P dest, double radius, P[] path) {
         PathCache c = new PathCache(src, dest, radius, path, C.world.getTickIndex());
         cache.add(c);
+    }
+
+    private P[] tryFindShortPath(P src, P dest, double radius) {
+        if (src.distance(dest) < CELL_SIZE) {
+            return new P[]{src, dest};
+        }
+        return null;
     }
 
     private P[] tryFindCachedPath(P src, P dest, double radius) {

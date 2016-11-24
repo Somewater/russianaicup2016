@@ -14,11 +14,16 @@ public class NearestTargets {
     // юниты, которые могут атаковать
     public ArrayList<Pair<Double, LivingUnit>> dangers;
 
+    public Building nearestTower;
+    public ArrayList<Building> towers;
+    public Building mainTower;
+
     public NearestTargets init() {
         allEnemies = new ArrayList<>();
         enemies = new ArrayList<>();
         bonuses = new ArrayList<>();
         dangers = new ArrayList<>();
+        towers = new ArrayList<>();
         findEnemies();
         findBonuses();
         findDangers();
@@ -28,11 +33,20 @@ public class NearestTargets {
 
     private void findEnemies() {
         double attackRangeSqr = C.self.getCastRange() * C.self.getCastRange();
-        for (LivingUnit u : C.world.getBuildings())
+        for (Building u : C.world.getBuildings())
             if (u.getFaction() != Faction.NEUTRAL && u.getFaction() != C.self.getFaction()) {
                 if (Utils.distanceSqr(u) <= attackRangeSqr)
                     enemies.add(u);
                 allEnemies.add(u);
+
+                if (u.getType() == BuildingType.FACTION_BASE)
+                    mainTower = u;
+                else
+                    towers.add(u);
+
+                if (nearestTower == null || nearestTower.getDistanceTo(C.self) > u.getDistanceTo(C.self)) {
+                    nearestTower = u;
+                }
             }
         for (LivingUnit u : C.world.getWizards())
             if (u.getFaction() != Faction.NEUTRAL && u.getFaction() != C.self.getFaction()) {
@@ -48,6 +62,7 @@ public class NearestTargets {
             }
         allEnemies.sort(Utils.distanceCmp);
         enemies.sort(Utils.distanceCmp);
+        towers.sort(Utils.distanceCmp);
     }
 
     private void findBonuses() {
