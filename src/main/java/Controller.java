@@ -15,23 +15,77 @@ public class Controller {
     private final P mainTower = new P(3600, 400);
 
     private LinkedList<P> prevPoints = new LinkedList<>();
+    private int stickingCooldown = 0;
+    private int stickingTicks = 0;
+
+    public boolean usePathfinder = true;
+    private int pathfinderChangeTicks = 0;
 
     public boolean move() {
+        LaneType myLane = null;
+        if (C.self.isMaster() && C.world.getTickIndex() == 0)
+            myLane = masterStep();
+
         if (waypointsByLane == null)
             createWaypoints();
-        selectLane();
+        selectLane(myLane);
 
-        boolean isSticking = this.isSticking();
+        boolean isSticking = false;
+        if (stickingCooldown-- <= 0)
+            isSticking = this.isSticking();
         boolean move = false;
-        if (!isSticking)
-            move = setMove();
-        boolean attack = setAttack();
 
-        if (!move && (C.pathfinderFailureTicks > 0 || isSticking) && !attack) {
-            return antiSticking();
+        LivingUnit victim = C.targets.bestVictim;
+
+        boolean attack = setAttack(victim);
+        if (stickingTicks-- <= 0 || attack)
+            move = setMove(attack, victim);
+        else
+            antiSticking();
+
+        if (isSticking && !attack) {
+            stickingTicks = 100;
+            stickingCooldown = 300;
+            usePathfinder = !usePathfinder;
+            pathfinderChangeTicks = 0;
+        } else {
+            pathfinderChangeTicks++;
+//            if (pathfinderChangeTicks > 300 && usePathfinder) {
+//                usePathfinder = false;
+//                pathfinderChangeTicks = 0;
+//            }
         }
 
         return move || attack;
+    }
+
+    private LaneType masterStep() {
+        ArrayList<Wizard> wizards = new ArrayList<>();
+        for (Wizard w : C.world.getWizards()) {
+            if (!w.isMe() && w.getFaction() == C.self.getFaction()) {
+                wizards.add(w);
+            }
+        }
+
+        Message[] messages = new Message[wizards.size()];
+        int i = 0;
+
+        List<LaneType> lanes = new ArrayList<>(Arrays.asList(LaneType.TOP, LaneType.MIDDLE, LaneType.BOTTOM));
+        Collections.shuffle(lanes, C.random);
+        List<LaneType> lanes2 = new ArrayList<>(lanes.subList(0, 2));
+        lanes.add(lanes2.get(0));
+        LaneType myLane = lanes2.get(1);
+        Collections.shuffle(lanes, C.random);
+
+        for (Wizard w : wizards) {
+            LaneType lane = lanes.remove(0);
+            Message m = new Message(lane, SkillType.RANGE_BONUS_PASSIVE_1, new byte[0]);
+            messages[i] = m;
+            i++;
+        }
+
+        C.move.setMessages(messages);
+        return myLane;
     }
 
     private boolean isSticking() {
@@ -71,10 +125,11 @@ public class Controller {
         return true;
     }
 
-    private boolean setMove() {
+    private boolean setMove(boolean isAttackMove, LivingUnit victim) {
         boolean move = false;
+        boolean canRotate = !isAttackMove;
         if (!C.targets.bonuses.isEmpty() && Utils.distanceSqr(C.targets.bonuses.get(0)) < 500 * 500) {
-            move = goTo(C.targets.bonuses.get(0));
+            move = goTo(C.targets.bonuses.get(0), false, canRotate);
             if (move) Utils.debugMoveTarget("bonus", C.targets.bonuses.get(0), null);
         }
 
@@ -85,30 +140,35 @@ public class Controller {
 
             if (C.health() > 0.7) {
                 // идти в бой
-                if (!C.targets.enemies.isEmpty() && !canAttack(C.targets.enemies.get(0))) {
-                    move = goTo(C.targets.enemies.get(0));
-                    if (move) Utils.debugMoveTarget("attack_enemy", C.targets.enemies.get(0), null);
-                } else {
-                    move = goTo(nextWaypoint, NEAREST_RADIUS);
+                if (victim == null) {
+                    move = goTo(nextWaypoint, NEAREST_RADIUS, canRotate);
                     if (move) Utils.debugMoveTarget("next_waypoint", null, nextWaypoint);
+                } else {
+                    if (canAttack(victim)) {
+                        // стоим и атакуем
+                        move = true;
+                    } else {
+                        move = goTo(victim, true, canRotate);
+                        if (move) Utils.debugMoveTarget("attack_enemy", victim, null);
+                    }
                 }
-            } else if (C.health() > 0.4) {
+            } else if (C.health() > 0.25) {
                 // по возможности уклоняться
                 nextPointBranchCooldown--;
                 if (C.targets.dangers.isEmpty() && nextPointBranchCooldown <= 0) {
-                    move = goTo(nextWaypoint, NEAREST_RADIUS);
+                    move = goTo(nextWaypoint, NEAREST_RADIUS, canRotate);
                     if (move) Utils.debugMoveTarget("next_waypoint", null, nextWaypoint);
                 } else if (C.targets.enemies.isEmpty()) {
                     // TODO: что делать, если я умеренно побитый, но врагов поблизости нету
                     move = true;
                 } else {
                     nextPointBranchCooldown = 100;
-                    move = gotoPreviousForSafety(previousWaypoint);
+                    move = gotoPreviousForSafety(previousWaypoint, canRotate);
                 }
             } else {
                 // уклоняться и лечиться
                 if (!C.targets.enemies.isEmpty()) {
-                    move = gotoPreviousForSafety(previousWaypoint);
+                    move = gotoPreviousForSafety(previousWaypoint, canRotate);
                 } else {
                     move = true;
                     // TODO Что делать, если я побитый, но врагов поблизости нету?
@@ -125,18 +185,29 @@ public class Controller {
         return move;
     }
 
-    public boolean goTo(P target, double radius) {
-        Utils.goTo(target, false);
-        return true;
+    public boolean goTo(P target, double radius, boolean canRotate) {
+        if (usePathfinder) {
+            return C.pathfinder.goTo(target);
+        } else {
+            Utils.goTo(target, false);
+            return true;
+        }
     }
 
-    public boolean goTo(CircularUnit unit) {
-        Utils.goTo(P.from(unit), false);
-        return true;
+    public boolean goTo(CircularUnit unit, boolean isEnemy, boolean canRotate) {
+        if (usePathfinder) {
+            if (isEnemy && canAttack(unit)) {
+                return false;
+            }
+            return C.pathfinder.goTo(P.from(unit));
+        } else {
+            Utils.goTo(P.from(unit), canRotate);
+            return true;
+        }
     }
 
-    private boolean gotoPreviousForSafety(P previousWaypoint) {
-        boolean move = goTo(getPreviousWaypoint(), NEAREST_RADIUS);
+    private boolean gotoPreviousForSafety(P previousWaypoint, boolean canRotate) {
+        boolean move = goTo(getPreviousWaypoint(), NEAREST_RADIUS, canRotate);
         if (move) {
             Utils.debugMoveTarget("previous_waypoint", null, previousWaypoint);
         } else {
@@ -150,7 +221,7 @@ public class Controller {
             }
 
             if (prevPrevWaypoint != null) {
-                move = goTo(prevPrevWaypoint, NEAREST_RADIUS);
+                move = goTo(prevPrevWaypoint, NEAREST_RADIUS, canRotate);
                 if (move)
                     Utils.debugMoveTarget("prev_previous_waypoint", null, prevPrevWaypoint);
             }
@@ -159,14 +230,11 @@ public class Controller {
         return move;
     }
 
-    private boolean canAttack(LivingUnit target) {
+    private boolean canAttack(CircularUnit target) {
         return C.self.getDistanceTo(target) < C.self.getCastRange();
     }
 
-    private boolean setAttack() {
-        LivingUnit victim = null;
-        if (!C.targets.enemies.isEmpty())
-            victim = C.targets.enemies.get(0);
+    public boolean setAttack(LivingUnit victim) {
         if (victim != null) {
             double distance = C.self.getDistanceTo(victim);
 
@@ -187,12 +255,12 @@ public class Controller {
                     } else if (cooldowns[ActionType.FROST_BOLT.ordinal()] <= 0 && C.mana() > 0.5) {
                         C.move.setAction(ActionType.FROST_BOLT);
                         C.move.setCastAngle(angle);
-                        C.move.setMinCastDistance(distance - victim.getRadius() + C.game.getMagicMissileRadius());
+                        C.move.setMinCastDistance(distance - victim.getRadius() + C.game.getFrostBoltRadius());
                         return true;
                     } else if (cooldowns[ActionType.FIREBALL.ordinal()] <= 0 && C.mana() > 0.7) {
                         C.move.setAction(ActionType.FIREBALL);
                         C.move.setCastAngle(angle);
-                        C.move.setMinCastDistance(distance - victim.getRadius() + C.game.getMagicMissileRadius());
+                        C.move.setMinCastDistance(distance - victim.getRadius() + C.game.getFireballRadius());
                         return true;
                     }
                 }
@@ -229,7 +297,7 @@ public class Controller {
         return new Pair<>(visible, destroyed);
     }
 
-    public void selectLane() {
+    public void selectLane(LaneType l) {
         Message[] messages = C.self.getMessages();
         if (messages.length > 0) {
             if (messages[0].getLane() != null) {
@@ -239,16 +307,20 @@ public class Controller {
             }
         }
         if (lane == null) {
-            switch (C.random.nextInt(3)) {
-                case 0:
-                    lane = LaneType.TOP;
-                    break;
-                case 1:
-                    lane = LaneType.MIDDLE;
-                    break;
-                case 2:
-                    lane = LaneType.BOTTOM;
-                    break;
+            if (l != null) {
+                lane = l;
+            } else {
+                switch (C.random.nextInt(3)) {
+                    case 0:
+                        lane = LaneType.TOP;
+                        break;
+                    case 1:
+                        lane = LaneType.MIDDLE;
+                        break;
+                    case 2:
+                        lane = LaneType.BOTTOM;
+                        break;
+                }
             }
 
             waypoints = waypointsByLane.get(lane);

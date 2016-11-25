@@ -17,6 +17,7 @@ public class NearestTargets {
     public Building nearestTower;
     public ArrayList<Building> towers;
     public Building mainTower;
+    public LivingUnit bestVictim = null;
 
     public NearestTargets init() {
         allEnemies = new ArrayList<>();
@@ -27,6 +28,7 @@ public class NearestTargets {
         findEnemies();
         findBonuses();
         findDangers();
+        bestVictim = findBestVictim();
 
         return this;
     }
@@ -110,5 +112,57 @@ public class NearestTargets {
                 throw new RuntimeException("Undefined enemy " + e.toString());
             }
         }
+    }
+
+    private LivingUnit findBestVictim() {
+        LivingUnit victim = null;
+        boolean victimCanAttack = false;
+        double victimScore = -1;
+
+        for (LivingUnit e : allEnemies) {
+            double distance = StrictMath.sqrt(Utils.distanceSqr(e));
+            boolean canAttack = distance < C.self.getCastRange();
+            double score = getScores(e);
+            if (distance > 500)
+                score = score * 0.8;
+            else if (distance > 300)
+                score = score * 0.9;
+
+            if (victim == null) {
+                victim = e;
+                victimCanAttack = canAttack;
+                victimScore = score;
+            } else {
+                if (!victimCanAttack) {
+                    if  (canAttack || score > victimScore) {
+                        victim = e;
+                        victimCanAttack = canAttack;
+                        victimScore = score;
+                    }
+                } else if (canAttack && score > victimScore) {
+                    victim = e;
+                    victimCanAttack = canAttack;
+                    victimScore = score;
+                }
+            }
+        }
+
+        return victim;
+    }
+
+    private int getScores(LivingUnit u){
+        int life = u.getLife();
+        int killBonus = (int)(u.getMaxLife() * 0.01 * (1.0 - ((double)u.getLife()) / u.getMaxLife()));
+        if (u.getLife() <= C.game.getMagicMissileDirectDamage()) {
+            if (u instanceof Wizard)
+                killBonus = u.getMaxLife();
+            else
+                killBonus = (int)(u.getMaxLife() * 0.25);
+        }
+
+        if (u instanceof Building || u instanceof Wizard)
+            return ((int)(0.25 * life)) + killBonus;
+        else
+            return ((int)(0.01 * life))+ killBonus;
     }
 }

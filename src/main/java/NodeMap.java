@@ -217,7 +217,8 @@ public class NodeMap<T extends AbstractNode> {
             C.vis.circle(newX * Pathfinder2.CELL_SIZE, newY * Pathfinder2.CELL_SIZE, 3, Color.gray);
         }
 
-        while (!done && (counter++) < 1000 && (C.debug || C.tickDurationMs() < 100)) {
+        long maxMs = Math.max(10, Math.min(500, C.tickDurationAvailable - C.tickDurationSum - 100));
+        while (!done && (counter++) < 1000 && (C.debug || C.tickDurationMs() < maxMs)) {
             current = lowestFInOpen(); // get node with lowest fCosts from openList
             closedList.add(current); // add current node to closed list
             openList.remove(current); // delete current node from open list

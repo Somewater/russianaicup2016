@@ -35,14 +35,14 @@ public final class MyStrategy implements Strategy {
         if (C.pathfinder == null)
             C.pathfinder = pf2 = new Pathfinder2();
 
-        if (C.pathfinderFailureTicks >= PF_SWAP_COOLDOWN) {
-            if (pfSwapTickCooldown-- <= 0) {
-                pfSwapTickCooldown = PF_SWAP_COOLDOWN;
-                swapPathFinder();
-            }
-        } else {
-            pfSwapTickCooldown = 0;
-        }
+//        if (C.pathfinderFailureTicks >= PF_SWAP_COOLDOWN) {
+//            if (pfSwapTickCooldown-- <= 0) {
+//                pfSwapTickCooldown = PF_SWAP_COOLDOWN;
+//                swapPathFinder();
+//            }
+//        } else {
+//            pfSwapTickCooldown = 0;
+//        }
 
         if (C.vis == null && C.debug)
             C.vis = new VisualClient(!C.debug);
@@ -53,6 +53,7 @@ public final class MyStrategy implements Strategy {
         }
         C.maxSpeed = C.game.getWizardForwardSpeed() + C.game.getWizardStrafeSpeed();
         C.targets = new NearestTargets().init();
+        C.tickDurationAvailable = 20 * world.getTickIndex() + 10000;
     }
 
     private void swapPathFinder() {

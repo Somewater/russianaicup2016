@@ -20,6 +20,7 @@ public class C {
     public static double maxSpeed;
     public static long startTickTime = 0;
     public static long tickDurationSum = 0;
+    public static long tickDurationAvailable = 0;
     public static int tickDurationMs() {
         return (int)(System.currentTimeMillis() - startTickTime);
     }

@@ -26,7 +26,7 @@ public final class MyStrategyFromDocsModified implements Strategy {
     public void move(Wizard self, World world, Game game, Move move) {
         if (controller.waypointsByLane == null)
             controller.createWaypoints();
-        controller.selectLane();
+        controller.selectLane(null);
 
         //move.setStrafeSpeed(random.nextBoolean() ? game.getWizardStrafeSpeed() : -game.getWizardStrafeSpeed());
 
@@ -36,7 +36,7 @@ public final class MyStrategyFromDocsModified implements Strategy {
             return;
         }
 
-        LivingUnit nearestTarget = getNearestTarget();
+        LivingUnit nearestTarget = C.targets.bestVictim;
 
         // Если видим противника ...
         if (nearestTarget != null) {
@@ -46,17 +46,7 @@ public final class MyStrategyFromDocsModified implements Strategy {
             if (distance <= self.getCastRange()) {
                 double angle = self.getAngleTo(nearestTarget);
 
-                // ... то поворачиваемся к цели.
-                move.setTurn(angle);
-
-                // Если цель перед нами, ...
-                if (StrictMath.abs(angle) < game.getStaffSector() / 2.0D) {
-                    // ... то атакуем.
-                    move.setAction(ActionType.MAGIC_MISSILE);
-                    move.setCastAngle(angle);
-                    move.setMinCastDistance(distance - nearestTarget.getRadius() + game.getMagicMissileRadius());
-                }
-
+                controller.setAttack(nearestTarget);
                 return;
             }
         }
