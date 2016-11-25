@@ -1,9 +1,6 @@
 import model.*;
 
-import java.util.ArrayList;
-import java.util.EnumMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 public class Controller {
     private final int NEAREST_RADIUS = 180;
@@ -17,32 +14,67 @@ public class Controller {
     private final P[] secondLineTowers = new P[]{new P(2630, 350), new P(3098, 1232), new P(3950, 1307)};
     private final P mainTower = new P(3600, 400);
 
+    private LinkedList<P> prevPoints = new LinkedList<>();
+
     public boolean move() {
         if (waypointsByLane == null)
             createWaypoints();
         selectLane();
 
-        boolean move = setMove();
+        boolean isSticking = this.isSticking();
+        boolean move = false;
+        if (!isSticking)
+            move = setMove();
         boolean attack = setAttack();
 
-        if (!move && C.pathfinderFailureTicks > 0 && !attack) {
-            // посохом пробьём себе дорогу
-            double rotation;
-            if ((C.pathfinderFailureTicks / 100) % 2 == 0)
-                rotation = C.game.getWizardMaxTurnAngle();
-            else
-                rotation = -C.game.getWizardMaxTurnAngle();
-            C.move.setTurn(rotation);
-            C.move.setAction(ActionType.STAFF);
+        if (!move && (C.pathfinderFailureTicks > 0 || isSticking) && !attack) {
+            return antiSticking();
         }
 
         return move || attack;
     }
 
+    private boolean isSticking() {
+        P current = P.from(C.self);
+
+        prevPoints.add(current);
+        if (prevPoints.size() > 10)
+            prevPoints.removeFirst();
+
+        if (prevPoints.size() >= 10) {
+            ArrayList<P> types = new ArrayList<>(prevPoints.size());
+            cycle:
+            for (P p : prevPoints) {
+                for (P t : types) {
+                    if (p.equals(t)) {
+                        continue cycle;
+                    }
+                }
+                types.add(p);
+            }
+            if (types.size() < 3) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean antiSticking() {
+        // посохом пробьём себе дорогу
+        double rotation;
+        if ((C.world.getTickIndex() / 100) % 2 == 0)
+            rotation = C.game.getWizardMaxTurnAngle();
+        else
+            rotation = -C.game.getWizardMaxTurnAngle();
+        C.move.setTurn(rotation);
+        C.move.setAction(ActionType.STAFF);
+        return true;
+    }
+
     private boolean setMove() {
         boolean move = false;
         if (!C.targets.bonuses.isEmpty() && Utils.distanceSqr(C.targets.bonuses.get(0)) < 500 * 500) {
-            move = C.pathfinder.goTo(C.targets.bonuses.get(0));
+            move = goTo(C.targets.bonuses.get(0));
             if (move) Utils.debugMoveTarget("bonus", C.targets.bonuses.get(0), null);
         }
 
@@ -54,17 +86,17 @@ public class Controller {
             if (C.health() > 0.7) {
                 // идти в бой
                 if (!C.targets.enemies.isEmpty() && !canAttack(C.targets.enemies.get(0))) {
-                    move = C.pathfinder.goTo(C.targets.enemies.get(0));
+                    move = goTo(C.targets.enemies.get(0));
                     if (move) Utils.debugMoveTarget("attack_enemy", C.targets.enemies.get(0), null);
                 } else {
-                    move = C.pathfinder.goTo(nextWaypoint, NEAREST_RADIUS);
+                    move = goTo(nextWaypoint, NEAREST_RADIUS);
                     if (move) Utils.debugMoveTarget("next_waypoint", null, nextWaypoint);
                 }
             } else if (C.health() > 0.4) {
                 // по возможности уклоняться
                 nextPointBranchCooldown--;
                 if (C.targets.dangers.isEmpty() && nextPointBranchCooldown <= 0) {
-                    move = C.pathfinder.goTo(nextWaypoint, NEAREST_RADIUS);
+                    move = goTo(nextWaypoint, NEAREST_RADIUS);
                     if (move) Utils.debugMoveTarget("next_waypoint", null, nextWaypoint);
                 } else if (C.targets.enemies.isEmpty()) {
                     // TODO: что делать, если я умеренно побитый, но врагов поблизости нету
@@ -93,8 +125,18 @@ public class Controller {
         return move;
     }
 
+    public boolean goTo(P target, double radius) {
+        Utils.goTo(target, false);
+        return true;
+    }
+
+    public boolean goTo(CircularUnit unit) {
+        Utils.goTo(P.from(unit), false);
+        return true;
+    }
+
     private boolean gotoPreviousForSafety(P previousWaypoint) {
-        boolean move = C.pathfinder.goTo(getPreviousWaypoint(), NEAREST_RADIUS);
+        boolean move = goTo(getPreviousWaypoint(), NEAREST_RADIUS);
         if (move) {
             Utils.debugMoveTarget("previous_waypoint", null, previousWaypoint);
         } else {
@@ -108,7 +150,7 @@ public class Controller {
             }
 
             if (prevPrevWaypoint != null) {
-                move = C.pathfinder.goTo(prevPrevWaypoint, NEAREST_RADIUS);
+                move = goTo(prevPrevWaypoint, NEAREST_RADIUS);
                 if (move)
                     Utils.debugMoveTarget("prev_previous_waypoint", null, prevPrevWaypoint);
             }

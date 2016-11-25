@@ -18,7 +18,7 @@ public final class MyStrategy implements Strategy {
         initNewTick(self, world, game, move);
 
         //trackTarget();
-        //if (!controller.move())
+        if (!controller.move())
             strategyFromDocs.move(self, world, game, move);
 
         completeTick();
