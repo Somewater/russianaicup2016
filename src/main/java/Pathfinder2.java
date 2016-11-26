@@ -15,6 +15,8 @@ public class Pathfinder2 implements IPathfinder {
     private P self;
     private LinkedList<PathCache> cache = new LinkedList<>();
 
+    private boolean useOldAstar = false;
+
     public void initNewTick() {
         data = null;
         P newSelf = P.from(C.self);
@@ -60,21 +62,27 @@ public class Pathfinder2 implements IPathfinder {
 
         if (data == null)
             data = createData();
-        List<Node> pathNodes =  data.nodeMap.findPath(
+//        List<Node> pathNodes =  data.nodeMap.findPath(
+//                (int)(src.x / CELL_SIZE),
+//                (int)(src.y / CELL_SIZE),
+//                (int)(dest.x / CELL_SIZE),
+//                (int)(dest.y / CELL_SIZE),
+//                radius / CELL_SIZE);
+        AMaze.NodeRef<Unit>[] pathNodeRefs =  data.amaze.findPath(
                 (int)(src.x / CELL_SIZE),
                 (int)(src.y / CELL_SIZE),
                 (int)(dest.x / CELL_SIZE),
                 (int)(dest.y / CELL_SIZE),
                 radius / CELL_SIZE);
 
-        if (pathNodes == null)
+        if (pathNodeRefs == null)
             return null;
 
-        path = new P[pathNodes.size()];
+        path = new P[pathNodeRefs.length];
         int i = 0;
-        for(Node n : pathNodes) {
-            double x = n.getxPosition() * CELL_SIZE;
-            double y = n.getyPosition() * CELL_SIZE;
+        for(AMaze.NodeRef n : pathNodeRefs) {
+            double x = n.x * CELL_SIZE;
+            double y = n.y * CELL_SIZE;
             P p = new P(x, y);
             path[i++] = p;
         }
@@ -166,24 +174,36 @@ public class Pathfinder2 implements IPathfinder {
 
     private Data createData() {
         Data d = new Data();
-        d.nodeMap = new NodeMap((int)(C.game.getMapSize() / CELL_SIZE),
-                (int)(C.game.getMapSize() / CELL_SIZE),
-                new NodeFact());
+        if (useOldAstar) {
+            d.nodeMap = new NodeMap((int) (C.game.getMapSize() / CELL_SIZE),
+                    (int) (C.game.getMapSize() / CELL_SIZE),
+                    new NodeFact());
+        } else {
+            d.amaze = new AMaze<Unit>((int) (C.game.getMapSize() / CELL_SIZE), (int) (C.game.getMapSize() / CELL_SIZE)) {
+                long maxMs = Math.max(10, Math.min(500, C.tickDurationAvailable - C.tickDurationSum - 100));
+
+                @Override
+                protected boolean canContinue(int counter) {
+                    return counter < maxIterationsForSearch && C.tickDurationMs() < maxMs;
+                }
+            };
+        }
         for (Tree t : C.world.getTrees())
-            closeNodes(d.nodeMap, t);
+            closeNodes(d.nodeMap, d.amaze, t);
         for (Building b : C.world.getBuildings())
-            closeNodes(d.nodeMap, b);
+            closeNodes(d.nodeMap, d.amaze, b);
         for (Wizard w : C.world.getWizards())
             if (!w.isMe() && Utils.distanceSqr(w) < 500*500)
-                closeNodes(d.nodeMap, w);
+                closeNodes(d.nodeMap, d.amaze, w);
         for (Minion m : C.world.getMinions())
             if (Utils.distanceSqr(m) < 500*500)
-                closeNodes(d.nodeMap, m);
+                closeNodes(d.nodeMap, d.amaze, m);
         return d;
     }
 
     private static class Data {
         NodeMap<Node> nodeMap;
+        AMaze<Unit> amaze;
     }
 
     private static class NodeFact implements NodeFactory {
@@ -211,7 +231,7 @@ public class Pathfinder2 implements IPathfinder {
         }
     }
 
-    private void closeNodes(NodeMap nodeMap, CircularUnit u) {
+    private void closeNodes(NodeMap nodeMap, AMaze amaze, CircularUnit u) {
         double x = u.getX() / CELL_SIZE;
         double y = u.getY() / CELL_SIZE;
         double r = (u.getRadius() + Utils.padding()) / CELL_SIZE;
@@ -246,8 +266,12 @@ public class Pathfinder2 implements IPathfinder {
                     }
                 }
 
-                if (!walkable)
-                    nodeMap.setWalkable(xc_0, yc_0, false);
+                if (!walkable) {
+                    if (useOldAstar)
+                        nodeMap.setWalkable(xc_0, yc_0, false);
+                    else
+                        amaze.setWalkable(xc_0, yc_0, false, u);
+                }
             }
     }
 
@@ -256,15 +280,30 @@ public class Pathfinder2 implements IPathfinder {
             return;
         if (data == null)
             return;
-        for (int x = 0; x < data.nodeMap.width; x++) {
-            for (int y = 0; y < data.nodeMap.higth; y++) {
-                Node n = data.nodeMap.getNode(x, y);
-                if (!n.isWalkable()) {
-                    double nx = n.getxPosition() * CELL_SIZE;
-                    double ny = n.getyPosition() * CELL_SIZE;
-                    double nxMax = nx + CELL_SIZE;
-                    double nyMax = ny + CELL_SIZE;
-                    C.vis.rect(nx, ny, nxMax, nyMax, Color.cyan);
+        if (useOldAstar) {
+            for (int x = 0; x < data.nodeMap.width; x++) {
+                for (int y = 0; y < data.nodeMap.higth; y++) {
+                    Node n = data.nodeMap.getNode(x, y);
+                    if (!n.isWalkable()) {
+                        double nx = n.getxPosition() * CELL_SIZE;
+                        double ny = n.getyPosition() * CELL_SIZE;
+                        double nxMax = nx + CELL_SIZE;
+                        double nyMax = ny + CELL_SIZE;
+                        C.vis.rect(nx, ny, nxMax, nyMax, Color.cyan);
+                    }
+                }
+            }
+        } else {
+            for (int x = 0; x < data.amaze.width; x++) {
+                for (int y = 0; y < data.amaze.height; y++) {
+                    AMaze.Node n = data.amaze.getNode(x, y);
+                    if (n != null && !n.walkable) {
+                        double nx = x * CELL_SIZE;
+                        double ny = y * CELL_SIZE;
+                        double nxMax = nx + CELL_SIZE;
+                        double nyMax = ny + CELL_SIZE;
+                        C.vis.rect(nx, ny, nxMax, nyMax, Color.cyan);
+                    }
                 }
             }
         }

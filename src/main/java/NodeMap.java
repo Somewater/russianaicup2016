@@ -166,7 +166,7 @@ public class NodeMap<T extends AbstractNode> {
 
     // variables needed for path finding
 
-    /** list containing nodes not visited but adjacent to visited nodes. */
+
     private List<T> openList;
     /** list containing nodes already visited/taken care of. */
     private List<T> closedList;

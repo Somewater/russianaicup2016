@@ -39,7 +39,8 @@ public class NearestTargets {
             if (u.getFaction() != Faction.NEUTRAL && u.getFaction() != C.self.getFaction()) {
                 if (Utils.distanceSqr(u) <= attackRangeSqr)
                     enemies.add(u);
-                allEnemies.add(u);
+                if (Utils.distanceSqr(u) < 360000)
+                    allEnemies.add(u);
 
                 if (u.getType() == BuildingType.FACTION_BASE)
                     mainTower = u;
@@ -54,13 +55,15 @@ public class NearestTargets {
             if (u.getFaction() != Faction.NEUTRAL && u.getFaction() != C.self.getFaction()) {
                 if (Utils.distanceSqr(u) <= attackRangeSqr)
                     enemies.add(u);
-                allEnemies.add(u);
+                if (Utils.distanceSqr(u) < 360000)
+                    allEnemies.add(u);
             }
         for (LivingUnit u : C.world.getMinions())
             if (u.getFaction() != Faction.NEUTRAL && u.getFaction() != C.self.getFaction()) {
                 if (Utils.distanceSqr(u) <= attackRangeSqr)
                     enemies.add(u);
-                allEnemies.add(u);
+                if (Utils.distanceSqr(u) < 360000)
+                    allEnemies.add(u);
             }
         allEnemies.sort(Utils.distanceCmp);
         enemies.sort(Utils.distanceCmp);
