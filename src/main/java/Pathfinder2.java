@@ -62,29 +62,44 @@ public class Pathfinder2 implements IPathfinder {
 
         if (data == null)
             data = createData();
-//        List<Node> pathNodes =  data.nodeMap.findPath(
-//                (int)(src.x / CELL_SIZE),
-//                (int)(src.y / CELL_SIZE),
-//                (int)(dest.x / CELL_SIZE),
-//                (int)(dest.y / CELL_SIZE),
-//                radius / CELL_SIZE);
-        AMaze.NodeRef<Unit>[] pathNodeRefs =  data.amaze.findPath(
-                (int)(src.x / CELL_SIZE),
-                (int)(src.y / CELL_SIZE),
-                (int)(dest.x / CELL_SIZE),
-                (int)(dest.y / CELL_SIZE),
-                radius / CELL_SIZE);
+        if (useOldAstar) {
+            List<Node> pathNodes = data.nodeMap.findPath(
+                    (int) (src.x / CELL_SIZE),
+                    (int) (src.y / CELL_SIZE),
+                    (int) (dest.x / CELL_SIZE),
+                    (int) (dest.y / CELL_SIZE),
+                    radius / CELL_SIZE);
 
-        if (pathNodeRefs == null)
-            return null;
+            if (pathNodes == null)
+                return null;
 
-        path = new P[pathNodeRefs.length];
-        int i = 0;
-        for(AMaze.NodeRef n : pathNodeRefs) {
-            double x = n.x * CELL_SIZE;
-            double y = n.y * CELL_SIZE;
-            P p = new P(x, y);
-            path[i++] = p;
+            path = new P[pathNodes.size()];
+            int i = 0;
+            for(Node n : pathNodes) {
+                double x = n.getxPosition() * CELL_SIZE;
+                double y = n.getyPosition() * CELL_SIZE;
+                P p = new P(x, y);
+                path[i++] = p;
+            }
+        } else {
+            AMaze.NodeRef<Unit>[] pathNodeRefs = data.amaze.findPath(
+                    (int) (src.x / CELL_SIZE),
+                    (int) (src.y / CELL_SIZE),
+                    (int) (dest.x / CELL_SIZE),
+                    (int) (dest.y / CELL_SIZE),
+                    radius / CELL_SIZE);
+
+            if (pathNodeRefs == null)
+                return null;
+
+            path = new P[pathNodeRefs.length];
+            int i = 0;
+            for(AMaze.NodeRef n : pathNodeRefs) {
+                double x = n.x * CELL_SIZE;
+                double y = n.y * CELL_SIZE;
+                P p = new P(x, y);
+                path[i++] = p;
+            }
         }
 
         if (path.length > 5)
