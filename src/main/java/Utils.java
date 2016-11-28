@@ -3,6 +3,10 @@ import model.*;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.BinaryOperator;
+import java.util.function.Consumer;
 
 public class Utils {
     public static void goTo(P target, boolean canRotate) {
@@ -145,5 +149,41 @@ public class Utils {
                 System.out.print(" => (" + String.valueOf(targetPoint.x) + ", " + String.valueOf(targetPoint.y) + ")");
             }
         }
+    }
+
+    private static HashMap<String, Long> bench = new HashMap<>();
+    private static long benchStart;
+    private static String currentBench;
+    private static int benchCount = 0;
+    public static void startBench(String block) {
+        if (currentBench != null)
+            throw new RuntimeException("Block " + currentBench + " does not completed");
+        currentBench = block;
+        benchStart = System.nanoTime();
+    }
+
+    public static void stopBench(String block) {
+        if (currentBench == null || !block.equals(currentBench))
+            throw new RuntimeException("Wrong bench block: " + block + ", expected block " + currentBench);
+        long duration = System.nanoTime() - benchStart;
+        bench.put(block, bench.getOrDefault(block, 0L) + duration);
+        currentBench = null;
+        if(block.equals("find_path"))
+            benchCount++;
+    }
+
+    public static void printBench() {
+        System.out.println("== BENCH " + benchCount + " ==");
+        long sum = bench.values().stream().reduce((aLong, aLong2) -> aLong + aLong2).orElse(0L);
+        bench.entrySet().stream().
+                sorted((o1, o2) -> (int)(o2.getValue() - o1.getValue())).
+                forEach(new Consumer<Map.Entry<String, Long>>() {
+                    @Override
+                    public void accept(Map.Entry<String, Long> kv) {
+                        System.out.println(String.format("%.2f", kv.getValue() / ((double)sum) * 100) +
+                                "%\t" + (kv.getValue() / 1000000.0) + " ms\t" + kv.getKey());
+                    }
+                });
+        System.out.println("===========");
     }
 }
